@@ -1,0 +1,22 @@
+{
+  "model_name": "logIE_inhouse_neg",
+  "file": "logIE_model_inhouse_neg.rds",
+  "polarity": "negative",
+  "model_type": "xgboost",
+  "feature_set": "maccs+desc+rt_mw",
+  "feature_breakdown": {
+    "fingerprint": 166,
+    "rcdk_descriptor": 187,
+    "metadata": ["RT_avg", "MW"]
+  },
+  "feature_count": 355,
+  "n_training": 319,
+  "n_test": 80,
+  "test_r2": 0.6099,
+  "test_rmse": 0.6107,
+  "test_mae": 0.4727,
+  "cv_r2": 0.5794,
+  "cv_rmse": 0.6412,
+  "note": "Optimized negative-polarity model (MACCS 166 + RCDK descriptors + RT_avg + MW). This polarity has no Organic_Percentage feature.",
+  "created": "2026-10-19"
+}

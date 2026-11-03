@@ -1,0 +1,36 @@
+.Rproj.user
+.Rhistory
+*.tar.gz
+*.zip
+
+# 本地草稿 / 一次性脚本（不参与包构建与复审）
+scratch/
+.tmp_*.R
+
+ai_tasks/
+
+# 构建产物 / 本地运行环境 / 大型数据（2026-08 仓库瘦身：勿再入库）
+NTSminer.Rcheck/
+oth/
+.check/
+~/
+.codegraph/
+data/raw_data/
+data/DLL/
+data/PFAS/
+
+# tests/gc 批次产物（脚本保留，产物不入库）
+tests/gc/*.rds
+tests/gc/*.xlsx
+tests/gc/*.csv
+tests/gc/*.png
+
+# tests 一次性验证宿主（脚本/报告入库，运行输出与大 rds 不入库）
+tests/rawdata_pfas/run_*/
+tests/rawdata_pfas/NTS_network_demo_html/
+tests/feedback_fix/*.rds
+tests/skill_tmp/*.rds
+tests/skill_tmp/results/
+tests/skill_standardize/out/
+tests/dist_simulate/fake_out/
+tests/smoke/run_*/

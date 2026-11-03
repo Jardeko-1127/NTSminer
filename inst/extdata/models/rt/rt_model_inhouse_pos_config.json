@@ -1,0 +1,32 @@
+{
+  "model_name": "inhouse_pos",
+  "file": "rt_model_inhouse_pos.rds",
+  "fingerprint_type": "maccs",
+  "descriptor_set": "light",
+  "model_method": "xgb",
+  "cv_r2_mean": 0.8346,
+  "cv_rmse_mean": 114.6369,
+  "train_r2": 0.9542,
+  "train_rmse": 60.6684,
+  "train_mae": 44.9535,
+  "test_r2": 0.8398,
+  "test_rmse": 113.6876,
+  "test_mae": 87.6974,
+  "n_samples": 687,
+  "n_fp_features": 166,
+  "n_desc_features": 26,
+  "n_total_features": 192,
+  "strategy": "maccs+desc_light",
+  "xgb_params": {
+    "max_depth": 3,
+    "eta": 0.142,
+    "objective": "reg:squarederror",
+    "subsample": 0.7,
+    "colsample_bytree": 0.53,
+    "min_child_weight": 8,
+    "nthread": 1
+  },
+  "created": "2026-06-11",
+  "polarity": "positive",
+  "training_data": "tests/rtpred/inhouse_RT_data_pos.csv"
+}

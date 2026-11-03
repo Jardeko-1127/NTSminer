@@ -1,0 +1,22 @@
+{
+  "model_name": "logIE_inhouse_pos",
+  "file": "logIE_model_inhouse_pos.rds",
+  "polarity": "positive",
+  "model_type": "xgboost",
+  "feature_set": "maccs+phys_desc+rt_mw_org",
+  "feature_breakdown": {
+    "fingerprint": 166,
+    "rcdk_descriptor": 21,
+    "metadata": ["RT", "MW", "Organic_Percentage"]
+  },
+  "feature_count": 190,
+  "n_training": 482,
+  "n_test": 119,
+  "test_r2": 0.506,
+  "test_rmse": 0.5475,
+  "test_mae": 0.4341,
+  "cv_r2": 0.4807,
+  "cv_rmse": 0.5748,
+  "note": "Optimized positive-polarity model (MACCS 166 + 21 Physical Descriptors + RT + MW + Organic_Percentage). Overfitting gap reduced by 28%.",
+  "created": "2026-10-19"
+}

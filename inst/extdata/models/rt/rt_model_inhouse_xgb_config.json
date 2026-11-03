@@ -1,0 +1,21 @@
+{
+  "model_name": "inhouse_xgb_generic",
+  "file": "rt_model_inhouse_xgb.rds",
+  "polarity": "unspecified (generic model)",
+  "model_type": "xgboost",
+  "model_version": "0.1.0",
+  "fingerprint_type": "circular+substructure+maccs+pubchem",
+  "fingerprint_nbits": [1024, 307, 166, 881],
+  "n_descriptors": 0,
+  "method": "xgb",
+  "n_samples": 56148,
+  "n_features": 670,
+  "n_features_raw": 2378,
+  "nzv_removed": 1573,
+  "cor_removed": 135,
+  "test_r2": 0.7959,
+  "test_rmse": 78.9,
+  "test_mae": 53.5,
+  "note": "Large general-purpose model trained on pooled data. No applicability domain recorded (model_version 0.1.0), so predict_rt() reports applicability as NA for it. The polarity-specific in-house models rt_model_inhouse_pos.rds / rt_model_inhouse_neg.rds are the ones used by the standard pipeline.",
+  "created": "2026-06-10"
+}

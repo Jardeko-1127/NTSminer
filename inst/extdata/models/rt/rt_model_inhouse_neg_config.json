@@ -1,0 +1,33 @@
+{
+  "model_name": "inhouse_neg",
+  "file": "rt_model_inhouse_neg.rds",
+  "polarity": "negative",
+  "fingerprint_type": "maccs",
+  "descriptor_set": "light",
+  "n_descriptors": 28,
+  "method": "xgboost",
+  "n_samples": 416,
+  "n_features": 194,
+  "xgb_params": {
+    "eta": 0.0934,
+    "max_depth": 2,
+    "subsample": 0.6372,
+    "colsample_bytree": 0.7597,
+    "min_child_weight": 3,
+    "objective": "reg:squarederror",
+    "nthread": 1
+  },
+  "cv_r2": 0.7821,
+  "cv_rmse": 133.6232,
+  "hp_tuning": "random_search_30",
+  "hp_best_r2": 0.7998,
+  "train_r2": 0.9074,
+  "train_rmse": 86.89,
+  "train_mae": 64.6898,
+  "test_r2": 0.8258,
+  "test_rmse": 122.2174,
+  "test_mae": 96.8133,
+  "best_nrounds": 101,
+  "baseline_maccs_r2": 0.5598,
+  "created": "2026-06-11"
+}

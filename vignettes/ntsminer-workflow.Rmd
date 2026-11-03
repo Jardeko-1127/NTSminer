@@ -1,0 +1,480 @@
+---
+title: "NTSminer S4 从原始质谱到数据库注释"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{NTSminer S4 从原始质谱到靶向注释}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+```{r}
+library(NTSminer)
+library(magrittr) # %>%
+```
+
+
+# 数据库
+## L1数据库构建
+### L1-读取建库
+```{r, eval = FALSE}
+# 读入您的PFAS 化合物清单（把下面 path 改成您本机的数据目录）
+path <- "path/to/your/project/"
+cmpd_list <- xlsx::read.xlsx(file.path(path, "data/PFAS_L1.xlsx"),1)
+mzml_file <- file.path(path, "data/PFAS/mzML/MS2/90ppb.mzML")
+
+message("🚀 正在扫描 混标...")
+cmpd_annotated <- extract_mix_standards(
+  cmpd_list = cmpd_list, 
+  mzml_file = mzml_file, 
+  polarity = "NEG",
+  mz_tol_ppm = 10,     # 默认 10 ppm 找母离子
+  rt_gap_tol = 15      # 相差 15 秒视为不同色谱峰
+)
+
+# ⏸️ 暂停（强烈建议）：
+# 可能发现了直链/支链的同分异构体，建议您先保存草稿看一眼：
+# fwrite(cmpd_annotated, "data/PFAS_inhouse_draft.csv")
+# print(cmpd_annotated[isomer_warning == TRUE, .(name, best_rt, isomer_rts)])
+
+message("🎯 正在提取最高响应的 MS2 碎片阵列...")
+sp <- extract_spectra_from_scans(
+  metadata = cmpd_annotated, 
+  mzml_file = mzml_file
+)
+
+message("🧬 正在编译 In-house S4 数据库...")
+db_inhouse <- build_nts_database(
+  metadata = cmpd_annotated, 
+  spectra_long = sp, 
+  noise_threshold = 0.01, # 剔除相对丰度 < 1% 的底噪碎片
+  top_k = 30L             # 每个物质只保留最强的 30 个核心碎片
+)
+
+# 检阅最终战果！
+message("✅ In-house 数据库构建大功告成！")
+saveRDS(db_inhouse, "database/NTS_spectraverse.rds")
+```
+
+### L1数据库-旧库转换
+```{r, eval = FALSE}
+# 将自己的旧库对象读入后转换；对象应包含谱库元数据、谱图和碎片列表。
+# legacy_db <- readRDS("path/to/your_legacy_library.rds")
+
+db_inhouse <- compile_reference_database(
+  info_df = legacy_db@spectra.info,
+  spectra_list = legacy_db@spectra.data,
+  fragment_list = legacy_db@fragments.data
+)
+
+saveRDS(db_inhouse, "database/NTS_spectraverse.rds")
+```
+
+## L2数据库构建
+### L2-MONA
+```{r, eval = FALSE}
+# 定义原始文件路径
+msp_path <- "data/MoNA-export-LC-MS_Spectra.msp"
+message("📥 正在提取 Negative 模式数据...")
+# res_neg <- import_msp(msp_path, polarity = "NEG")
+res_neg <- suppressWarnings(import_msp(msp_path, polarity = "NEG"))
+message("📥 正在提取 Positive 模式数据...")
+# res_pos <- import_msp(msp_path, polarity = "POS")
+res_pos <- suppressWarnings(import_msp(msp_path, polarity = "POS"))
+
+message("🔗 正在执行数据库合并...")
+all_metadata <- rbind(res_neg$metadata, res_pos$metadata)
+all_metadata <- all_metadata[!is.na(SMILES) & SMILES != ""]
+all_spectra <- rbind(res_neg$spectra_long, res_pos$spectra_long)
+all_spectra <- all_spectra[Lab_ID %in% all_metadata$Lab_ID]
+
+message("🧬 正在铸造统一 NTSDatabase (POS+NEG)...")
+db_unified <- build_nts_database(
+  metadata = all_metadata,
+  spectra_long = all_spectra,
+  noise_threshold = 0.01, 
+  top_k = 30L
+)
+
+# check
+table(db_unified@metadata$Polarity)
+
+if(!dir.exists("database")) dir.create("database")
+saveRDS(db_unified, "database/NTS_MoNA_Unified_Master.rds")
+```
+
+### L2数据库-spectraverse
+```{r, eval = FALSE}
+# method 1
+db_spectraverse <- build_spectraverse_db(
+  "spectraverse_meta.csv",
+  "spectraverse.mgf",
+  id_col = "spectrum_uuid",
+  default_polarity = "NEG"
+)
+
+# method 2 建议使用
+sl <- import_mgf("data/spectraverse/spectraverse-1.0.1.mgf")
+md <- data.table::fread("data/spectraverse/metadata-can-rem-lowres-prec-highfragmass-matchms-dotcheck-noiserem-metadata.csv")
+# …整理 Lab_ID / mass / Polarity 后
+colnames(md)[1] <- "Lab_ID"
+colnames(md)[9] <- "mass"
+
+db_spectraverse <- build_nts_database(md, sl)
+saveRDS(db_spectraverse, "database/NTS_spectraverse.rds")
+```
+
+
+
+# 数据处理
+## 数据准备
+
+发布包不包含原始演示数据。请将下面的 MS1 / MS2 路径替换为自己的目录；常用 PFAS 参考库可通过
+`load_builtin_pfas_library()` 加载。工作流代码块默认不执行，以避免依赖本机数据路径。
+
+```{r, eval = FALSE}
+# 用户提供的原始文件目录
+ms1_dir <- "path/to/MS1"
+ms2_dir <- "path/to/MS2"
+
+# 随包内置的三套常用 PFAS 谱库：inhouse(L1) / online(L2a) / prediction(L2b)
+db_inhouse <- load_builtin_pfas_library("inhouse")
+
+message("🚀 启动 NTSminer...")
+```
+
+## 处理工作流
+### Phase 1: MS1 提取
+```{r, eval = FALSE}
+project <- create_nts_project(dir = ms1_dir) %>%
+  # 1. XCMS 底层特征提取 (严格的质控参数)
+  #    peakwidth 单位是 **秒**，必须明显大于实际峰宽，否则 CentWave 会把
+  #    单个峰劈成两个；请根据实际色谱峰宽设置上限。
+  extract_features(method = XcmsParam(
+    ppm = 10, peakwidth = c(10, 90), sn_thresh = 5,
+    prefilter = c(3, 1000), noise = 500, mzdiff = 0.01,
+    binSize = 0.015, bw = 10, min_fraction = 0.01, threads = 1
+  )) %>%
+  # 2. 识别并标记同位素峰 (最高保留 3 个同位素)
+  flag_isotopes(max_isotopes = 3) %>%
+  # 3. 识别并标记源内裂解产物 (ISF)，防止后续网络出现伪影
+  flag_isf(loss_tol_da = 0.005, corr_thresh = 0.85)
+
+```
+
+### （可选）空白样扣除：`filter_blanks()`
+
+在存在 **空白进样（Blank）** 与 **研究样品** 强度列时，可按「fold-change vs 空白行均值」快速剔除仅空白中存在的弱信号伪峰。函数对强度矩阵逐行比较，不写回 `NTSProject` Slot；常用于在 `extract_features` 得到的 `feature_table` 上清洗后再 `set_feature_table()`。请将下面路径和列名替换为自己的峰表设置：
+
+```{r, eval = FALSE}
+ft <- data.table::fread("path/to/feature_table.csv")
+# 任一样品 > 3 × 该行空白强度均值则保留；mode = "all" 要求所有样品均过阈值。
+ft_keep <- filter_blanks(
+  ft,
+  sample_cols = c("sample_1", "sample_2"),
+  blank_cols = c("blank_1", "blank_2"),
+  threshold = 3,
+  mode = "any"
+)
+```
+
+
+### （可选）内标归一化与半定量
+
+在 **`extract_features()`** 之后，若实验中加入 **同位素内标（IS）**，可用 CSV 提供内标的 **名称、m/z、保留时间（秒，与 xcms `feature_table$rt` 一致）** 及可选 **加标量 `amount`**。包会先在峰表中匹配内标特征，再归一化样品强度，并（可选）经 **RIE** 校正后估算 **`estimated_conc`**。
+
+**推荐归一化方式**（长梯度 PFAS）：
+
+| `method` | 含义 | 何时用 |
+|--------|------|--------|
+| `nearest_rt` | 每个特征用 **RT 最近** 的内标除 | 早/晚各有一个或多个 IS（**默认**） |
+| `geom_mean` | 所有 IS 响应的几何平均，全峰共用 | IS RT 接近、方法学与旧版一致 |
+| `loess` | 沿 RT 对内标响应插值后去除 | IS ≥3 个且沿色谱分布 |
+| `rt_segment` | 按 RT 分段，每段固定一个 IS | 有明确分段规程时可传 `rt_breaks` |
+
+通过 `read_internal_standards()` 读取用户提供的 CSV；常用列为内标名称、m/z、RT（秒）和可选加标量，具体字段见 `?read_internal_standards`。
+
+#### 运行内标匹配与半定量
+
+```{r, eval = FALSE}
+ft <- data.table::fread("path/to/feature_table.csv")
+is_tbl <- read_internal_standards("path/to/internal_standards.csv")
+hit <- match_internal_standards(ft, is_tbl, pick = "max_intensity")
+hit[, c("is_name", "feature_name", "ppm_error", "rt_error_sec", "mean_intensity")]
+
+res <- run_semi_quantification(
+  ft,
+  is_match = hit,
+  normalize_method = "nearest_rt",
+  scale_factor = 1e6,
+  default_rie = 1.0
+)
+res$feature_table[, c("name", "is_anchor", "is_normalise_method", "rie", "estimated_conc")]
+```
+
+#### `NTSProject` 流水线（分步或一键）
+
+```{r semi-quant-project, eval = FALSE}
+is_csv <- "path/to/internal_standards.csv"
+
+# 方式 A：一键（匹配 → nearest_rt 归一化 → predict_rie → calculate_concentration）
+project <- run_semi_quantification(
+  project,
+  is_csv = is_csv,
+  mz_tol_ppm = 10,
+  rt_tol_sec = 45,
+  pick = "max_intensity",
+  normalize_method = "nearest_rt",
+  scale_factor = 1e6,
+  predict_rie = TRUE,
+  default_rie = 1.0,
+  calculate_conc = TRUE
+)
+
+# 方式 B：分步（便于检查匹配表）
+is_tbl <- read_internal_standards(is_csv)
+hit <- match_internal_standards(project, is_tbl, on_missing = "stop")
+print(hit)
+
+project <- normalize_by_IS(
+  project,
+  is_names = hit$feature_name,
+  method = "nearest_rt",
+  is_match = hit,
+  scale_factor = 1e6
+)
+project <- predict_rie(project, default_rie = 1.0)
+project <- calculate_concentration(project, is_match = hit)
+
+ft <- get_feature_table(project)
+ft[, c("name", "mz", "rt", "is_anchor", "estimated_conc")]
+```
+
+**说明**：
+
+- **`match_internal_standards()`** 在匹配阶段记录 **`mean_intensity`**（归一化前），供 **`calculate_concentration()`** 与 CSV 中的 **`amount`** 按 `is_anchor` 对齐。
+- **`predict_rie()`** 当前为 **MVP**（无专用 RIE 模型时多为 `default_rie` 或 LogP 线性近似）；待模型就绪后可在同一步替换，无需改匹配与归一化接口。
+- 内标行本身也会被归一化；下游筛选可比浓度时通常 **排除 `hit$feature_name`** 对应行。
+
+与 **`calculate_kmd()`** / **`batch_annotate()`** 的顺序：建议在 **空白扣除之后、KMD/注释之前或之后** 均可；若需用归一化强度做组间比较，宜在 **`filter_blanks()`** 之后执行本段。
+
+
+### Phase 2: KMD同系物
+```{r, eval = FALSE}
+# 计算 CF2 (m/z ~ 49.9968) 单元的 KMD
+project <- project %>%
+  calculate_kmd(base_formulas = "CF2", mz_tol_ppm = 30)
+# (可选操作) 根据 KMD 容差过滤
+# project <- filter_by_kmd(project, max_gap = 2, kmd_tol = 0.005)
+```
+
+
+### Phase 3: MS2读取与特征识别
+```{r, eval = FALSE}
+project <- project %>%
+  # 1. 从独立的 MS2 文件中挂载二级碎片数据
+  extract_ms2(ms2_dir = ms2_dir, mz_tol_ppm = 30, rt_tol = 90) %>%
+  # 2. 二级谱图净化：去除低频、低强度的噪音碎片
+  purify_ms2_spectra(mz_tol_da = 0.01, min_freq = 0.1) %>%
+  # 3. 诊断离子外挂验证：通过 CSV 字典，快速锁定含有特定 PFAS 碎片的特征峰
+  #    default_diagnostic_fragments_csv() 指向包内自带的专家碎片表；
+  #    它是 PFAS 专属规则，需要显式传入才会生效。
+  validate_with_ms2(
+    mz_tol_ppm = 10,
+    diagnostic_csv_path = default_diagnostic_fragments_csv()
+  ) %>%
+  # 4. 终极靶向匹配：与自建的 InHouse PFAS 数据库进行严格的比对注释
+  batch_annotate(
+    database = db_inhouse,
+    mz_tol = 10, 
+    rt_tol = 30,
+    feature_tol = 0.02, # MS2 碎片对齐的宽容度
+    min_score = 0.5, # 余弦相似度阈值
+    polarity = "neg"
+  )
+```
+
+
+## 查看结果
+```{r, eval = FALSE}
+# 查看确证的结果
+final_report <- project@db_annotations
+final_report <- final_report[order(final_report$score_total, decreasing = TRUE, na.last = TRUE), , drop = FALSE]
+final_report <- final_report[!duplicated(final_report$ref_id),]
+
+head(final_report)
+```
+
+
+# 分子网络
+## 同系物网络推演
+```{r, eval = FALSE}
+target_mz_diff <- calculate_exact_mass("CF2")
+
+message("🕸️ 正在构建纯 CF2 同系物网络...")
+net_homo <- build_homologue_network(project, target_mz_diff = target_mz_diff, 
+                                    bidirectional = T, max_gap = 3,
+                                    filter_by_target_mass = TRUE) |> 
+  infer_homologue_structures(project = project, max_steps = 0L)
+
+plot_molecular_network(net_homo)
+```
+
+## 转化网络推演
+```{r, eval = FALSE}
+message("♻️ 正在扫描全局环境转化路径 (Transformation Network)...")
+TP_custom_rules <- data.frame(
+  rule_name   = c("脱氟羟基化", "脱羧反应", "氧化加成"),
+  mass_shift  = c(-1.9957, -43.9898, 15.9949), 
+  sub_formula = c("F", "CO2", NA_character_),
+  add_formula = c("HO", NA_character_, "O"),
+  stringsAsFactors = FALSE
+)
+
+net_trans <- search_transformations(project, rules = TP_custom_rules, mz_tol_ppm = 5) |> 
+  (\(nd) annotate_transformations(project = project, network_data = nd, rules = TP_custom_rules))()
+
+plot_molecular_network(net_trans)
+```
+
+
+# 碎片网络
+## 全量网络-all cmps similarity
+### all cmps 结构网络
+```{r, eval = FALSE}
+lib <- build_structural_library(
+  csv_path = "data/test_PFAS_list.csv", 
+  smiles_col = "QSAR_READY_SMILES", 
+  id_col = "DTXSID",    
+  output_rds = "OECD_Structural_DB.rds",
+  fingerprint_type = "substructure" 
+)
+
+```
+
+### 网络推演
+```{r, eval = FALSE}
+message("🕸️ 正在提取纯 [碎片离子] 网络...")
+net_fragment <- generate_network_data(
+  project, 
+  ms2_edge_types = "fragment",
+  min_shared_ms2 = 5,
+  min_frag_freq = 0.5,
+  ms1_edge_types = NULL
+)
+
+net_fragment$polarity <- "neg"
+# 跑结构推演
+net_fragment <- annotate_by_dual_network(
+  net_data = net_fragment, 
+  structural_db_path = "data/OECD_Structural_DB.rds",
+  mz_tol_ppm = 5, min_similarity = 0.5, similarity_method = "dice"
+)
+
+plot_molecular_network(net_fragment)
+```
+
+## 种子导向网络
+### 碎片网络提取
+```{r, eval = FALSE}
+message("🕸️ 正在提取纯 [碎片离子] 网络...")
+net_fragment <- generate_network_data(
+  project, 
+  ms2_edge_types = "fragment",
+  min_shared_ms2 = 3,
+  min_frag_freq = 0.5,
+  ms1_edge_types = NULL
+)
+
+net_fragment$polarity <- "neg"
+```
+
+### 化合物指纹计算
+```{r, eval = FALSE}
+# options(java.parameters = "-Xmx8g")
+precompile_target_db(
+  input_csv = "data/test_PFAS_list.csv",
+  output_rds = "data/OECD_target_matrix_precompiled.rds",
+  smi_col = "SMILES",
+  id_col = "Lab_ID",
+  chunk_size = 100L
+)
+message("✅ 完成")
+```
+
+### GEN-1 推演
+```{r, eval = FALSE}
+message("🚀 启动 Gen-1 雷达扫描...")
+gen0_seeds <- unique(net_fragment$nodes[
+  !is.na(net_fragment$nodes$SMILES) & 
+    net_fragment$nodes$n_matched_peaks >= 2, ]$SMILES)
+
+db_gen1 <- build_local_db_from_seeds(
+  initial_seeds_smiles = gen0_seeds,
+  precompiled_rds_path = "data/OECD_target_matrix_precompiled.rds",
+  output_dir = "data/iterative_dbs",
+  smiles_col = "SMILES",
+  id_col = "Lab_ID",
+  prefix = "gen_1",
+  top_n = 50
+)
+
+# (网络推演)
+net_fragment <- annotate_by_dual_network(
+  net_data = net_fragment, 
+  structural_db_path = db_gen1_path,
+  min_similarity = 0.8  # 严苛质控
+)
+
+```
+
+### GEN-2 推演
+```{r, eval = FALSE}
+message("🚀 提取 Gen-1 战果，启动 Gen-2 雷达扫描...")
+# 提取上一轮新感染的高分结构作为新种子
+gen1_seeds <- unique(net_fragment$nodes[
+  !is.na(net_fragment$nodes$Propagation_Level) & 
+    net_fragment$nodes$Propagation_Level == 1 &
+    !is.na(net_fragment$nodes$propagated_SMILES) , 
+]$propagated_SMILES)
+
+db_gen2 <- build_local_db_from_seeds(
+  initial_seeds_smiles = gen1_seeds,
+  precompiled_rds_path = "data/OECD_target_matrix_precompiled.rds", 
+  output_dir = "data/iterative_dbs",
+  smiles_col = "SMILES",
+  id_col = "Lab_ID",
+  prefix = "gen_2",
+  top_n = 50
+)
+
+# (网络推演)
+net_fragment <- annotate_by_dual_network(
+  net_data = net_fragment, 
+  structural_db_path = db_gen2,
+  min_similarity = 0.8
+)
+```
+
+### 核查
+```{r, eval = FALSE}
+message(">>> 真实的最终代际结果：")
+table(net_fragment$nodes$Propagation_Level, useNA = "always")
+
+# 提取所有被点亮的节点 (Gen 0, 1, 2...)
+discovered_pfas <- net_fragment$nodes[
+  !is.na(net_fragment$nodes$Propagation_Level), 
+]
+
+# 保存
+write.csv(discovered_pfas, "data/Final_PFAS_Discoveries.csv", row.names = FALSE)
+```
+

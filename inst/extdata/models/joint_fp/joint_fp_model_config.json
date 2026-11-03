@@ -1,0 +1,86 @@
+{
+  "model_name": "IDSL_MINT_Joint_2215bit_MultiSource_Universal",
+  "model_version": "1.1.0",
+  "created_date": "2026-10-19",
+  "architecture": {
+    "d_model": 256,
+    "num_heads": 8,
+    "num_encoder_layers": 4,
+    "num_decoder_layers": 4,
+    "max_sequence_length": 280,
+    "vocab_size": 2218,
+    "num_mz_vocabs": 148003,
+    "min_mz": 20.0,
+    "max_mz": 1500.0,
+    "interval_mz": 0.01,
+    "max_peaks": 512,
+    "dropout": 0.1
+  },
+  "fingerprint_vocabulary": {
+    "total_tokens": 2218,
+    "pad_token": 0,
+    "sos_token": 1,
+    "eos_token": 2,
+    "ecfp2048": {
+      "bit_start": 0,
+      "bit_end": 2047,
+      "token_start": 3,
+      "token_end": 2050,
+      "radius": 2,
+      "n_bits": 2048
+    },
+    "maccs167": {
+      "bit_start": 2048,
+      "bit_end": 2214,
+      "token_start": 2051,
+      "token_end": 2217,
+      "n_bits": 167,
+      "source": "RDKit MACCSkeys (167-bit vector including bit 0)"
+    }
+  },
+  "training_summary": {
+    "trained_epochs": 5,
+    "training_spectra": 124908,
+    "training_scaffolds": 60502,
+    "validation_spectra": 20980,
+    "validation_scaffolds": 10676,
+    "train_loss": 1.3329,
+    "val_loss": 1.729269740740748,
+    "val_tanimoto": 0.680220204247059
+  },
+  "multisource_finetuning_summary": {
+    "trained_epochs": 5,
+    "training_spectra": 549785,
+    "training_scaffolds": 44278,
+    "validation_spectra": 71323,
+    "validation_scaffolds": 4426,
+    "train_loss": 0.3127,
+    "val_loss": 0.9041,
+    "val_tanimoto": 0.7130,
+    "val_perplexity": 2.47,
+    "training_sources": [
+      "mzCloud (Environmental & Pesticides, 144k MS2 spectra)",
+      "Spectraverse (Orbitrap multi-class small molecules, 477k MS2 spectra)"
+    ]
+  },
+  "pfas_benchmark_performance": {
+    "evaluated_spectra": 3858,
+    "isolated_scaffolds": 174,
+    "joint_2215_tanimoto_mean": 0.6313,
+    "joint_2215_tanimoto_median": 0.6667,
+    "ecfp2048_tanimoto_mean": 0.4573,
+    "maccs167_tanimoto_mean": 0.8406,
+    "downstream_toxicity_fidelity": {
+      "spearman_rho": 0.7303,
+      "pearson_r": 0.7699,
+      "mae": 0.1808,
+      "roc_auc": 0.8905
+    }
+  },
+  "weights_files": {
+    "fp32_filename": "joint_fp_model_weights.pt",
+    "fp32_size_mb": 177.05,
+    "fp16_filename": "joint_fp_model_weights_fp16.pt",
+    "fp16_size_mb": 88.55
+  }
+}

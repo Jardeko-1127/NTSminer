@@ -1,0 +1,30 @@
+{
+  "model_name": "FraG_FIORA_InHouse_PFAS_v1",
+  "source_library": "NTS_InHouse_PFAS.rds",
+  "n_train_compounds": 58,
+  "n_test_compounds": 15,
+  "metrics": {
+    "train_cosine_b0": 0.19609324848612805,
+    "train_cosine_opt": 0.22314289246780844,
+    "test_cosine_b0": 0.14806728310856235,
+    "test_cosine_opt": 0.15255187139911275,
+    "delta_test_cosine": 0.004484588290550401,
+    "test_recall_opt": 0.5054375010777251
+  },
+  "parameters": {
+    "prec_surv_ce10": 0.7906337978410922,
+    "prec_surv_ce20": 0.2549624269907426,
+    "prec_surv_ce40": 0.046734331165919483,
+    "cleave_scale_ce10": 0.25708661421218926,
+    "cleave_scale_ce20": 0.8438735482247873,
+    "cleave_scale_ce40": 1.449673642978659,
+    "w_co2_loss": 1.3015213801552397,
+    "w_so3_cleave": 1.6443856611148528,
+    "w_ether_cleave": 1.25,
+    "w_pfas_cc_cleave": 0.6846568586574345,
+    "w_hf_loss": 0.44092099028170184,
+    "w_sulfonamide": 1.4,
+    "charge_exp": 0.6355312315409141,
+    "ladder_decay": 0.7960560011708223
+  }
+}

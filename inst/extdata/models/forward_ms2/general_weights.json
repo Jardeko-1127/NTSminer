@@ -1,0 +1,20 @@
+{
+  "model_name": "FraG_FIORA_General_Contaminants_v1",
+  "description": "General environmental contaminant fragmentation weights (sulfonamides, quinolones, tetracyclines, OPEs, PAEs, and diverse organics)",
+  "parameters": {
+    "prec_surv_ce10": 0.65,
+    "prec_surv_ce20": 0.22,
+    "prec_surv_ce40": 0.04,
+    "cleave_scale_ce10": 0.35,
+    "cleave_scale_ce20": 0.85,
+    "cleave_scale_ce40": 1.45,
+    "w_co2_loss": 1.25,
+    "w_so3_cleave": 1.50,
+    "w_ether_cleave": 1.20,
+    "w_pfas_cc_cleave": 0.70,
+    "w_hf_loss": 0.45,
+    "w_sulfonamide": 1.40,
+    "charge_exp": 0.65,
+    "ladder_decay": 0.82
+  }
+}

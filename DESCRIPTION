@@ -1,0 +1,53 @@
+Package: NTSminer
+Title: Non-Targeted Screening and Dual-Network Propagation for ECs Discovery
+Version: 0.1.41
+Authors@R: person("Jardeko", email = "jardeko@gmail.com", role = c("cre"))
+Description: An advanced computational framework for non-targeted screening (NTS) of complex environmental samples. NTSminer integrates mass spectrometry data processing, dual-network propagation (structural and spectral), and interactive graph visualizations to accelerate the discovery, tracing, and annotation of novel per- and polyfluoroalkyl substances (PFAS) and their transformation products.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests:
+    bslib,
+    caret,
+    DBI,
+    DT,
+    erah (>= 2.0.0),
+    knitr,
+    magrittr,
+    ParBayesianOptimization,
+    R.utils,
+    ranger,
+    Rdisop,
+    rJava,
+    rmarkdown,
+    reticulate,
+    RSQLite,
+    signal,
+    testthat (>= 3.0.0),
+    toxpiR,
+    xgboost,
+    xlsx
+Config/testthat/edition: 3
+Imports:
+    BiocGenerics,
+    BiocParallel,
+    data.table,
+    fingerprint,
+    ggplot2,
+    htmlwidgets,
+    httr,
+    igraph,
+    jsonlite,
+    methods,
+    MsCoreUtils,
+    MSnbase,
+    mzR,
+    OrgMassSpecR,
+    rcdk,
+    shiny,
+    visNetwork,
+    xcms,
+    xml2
