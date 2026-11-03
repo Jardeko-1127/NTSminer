@@ -1,96 +1,105 @@
-﻿# NTSminer
+# NTSminer
 
-**一句话**：面向复杂环境样品的 **非靶向筛选（NTS）** 与 **双网络传播**（结构 + 质谱），整合 LC-MS(/MS) 处理、网络构建与可视化，用于 PFAS 及其转化产物的发现、溯源与注释的 R 包。
+NTSminer is an R package for non-target screening (NTS) of complex environmental samples using LC–MS(/MS). It supports feature extraction and curation, spectral annotation, and **multi-layer molecular network construction and annotation propagation**. Network layers can represent CF2 homologue relationships, diagnostic-fragment similarity, neutral losses, exact-mass differences, and MS2 semantic similarity.
 
-- **当前版本**：以根目录 [`DESCRIPTION`](DESCRIPTION) 为唯一来源；版本变更记录见 [`NEWS.md`](NEWS.md)（不在本文档重复历史版本列表）。
-- **License**：MIT（见根目录 `LICENSE`）。
+- **Version:** 0.1.41 (see [`DESCRIPTION`](DESCRIPTION)); release history is recorded in [`NEWS.md`](NEWS.md).
+- **License:** MIT (see [`LICENSE`](LICENSE)).
 
-## 安装
+## Installation
 
-在 R 会话中（需已安装 **[Bioconductor](https://bioconductor.org/)** 相关依赖及本包 `Imports` 所列包）：
+Install the package from GitHub. NTSminer depends on R and several Bioconductor packages; install the required dependencies for your platform before or during package installation.
 
 ```r
-# 从本地源码目录安装（开发常用）
-if (!requireNamespace("remotes", quietly = TRUE))
+if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
-remotes::install_local("路径/到/NTSminer", dependencies = TRUE)
+}
+remotes::install_github("Jardeko-1127/NTSminer", dependencies = TRUE)
 ```
 
-或直接于克隆目录内调试加载：
+To load the package source during development:
 
 ```r
-pkgload::load_all()   # 或 devtools::load_all()
+pkgload::load_all()
 ```
 
-## 使用自己的数据
+## Working with your data
 
-本发布版不包含演示原始数据。请将 MS1 / MS2 路径替换为自己的数据目录；包内仍提供常用 PFAS 参考库、诊断碎片表及模型资源。
+The repository does not include raw demonstration mzML files. Supply paths to your own MS1 and MS2 data. The package includes commonly used PFAS reference libraries, a diagnostic-fragment table, and model assets.
 
 ```r
 ms1_dir <- "path/to/MS1"
 ms2_dir <- "path/to/MS2"
 
-# 三套常用 PFAS 谱库（in-house L1 / OECD online L2a / OECD in-silico L2b）
-db <- load_builtin_pfas_library()  # 默认合并三库
+# Load the bundled in-house, OECD online, and OECD in-silico PFAS libraries.
+# By default, the three libraries are combined into one NTSDatabase object.
+db <- load_builtin_pfas_library()
 
-# 拿任一内置文件的磁盘路径
-bundled_nts_file("extdata/tables/diagnostic_fragments.csv")
+diagnostic_table <- bundled_nts_file(
+  "extdata/tables/diagnostic_fragments.csv"
+)
 ```
 
-内置表、谱库和模型通过 `bundled_nts_file()` 或相应的包内加载函数定位；MS1/MS2 原始文件由用户提供。
+A typical LC–MS/MS workflow includes feature extraction, isotope and in-source-fragmentation checks, CF2-based KMD analysis, MS2 extraction and cleanup, diagnostic-fragment validation, library matching, and network construction. See the [workflow vignette](vignettes/ntsminer-workflow.Rmd) for function examples. Raw MS1/MS2 data and project-specific results are supplied by the user.
 
-## 运行与检查
+## Multi-layer molecular networks
+
+NTSminer can construct and inspect multiple complementary network layers, including:
+
+- **CF2 homologue layer:** connects features consistent with a CF2 mass increment and homologue-series constraints.
+- **Diagnostic-fragment layer:** links features that share characteristic MS2 fragments.
+- **Neutral-loss layer:** links features with shared neutral losses.
+- **Mass-difference layer:** links features by exact precursor-mass differences.
+- **MS2 semantic-similarity layer:** connects spectra with similar learned embeddings.
+
+Layers can be examined separately or combined for evidence integration and annotation propagation. Structural evidence and spectral similarity provide complementary paths for organizing and prioritizing candidates; propagated annotations should be interpreted with their supporting evidence and confidence levels.
+
+## Candidate ranking and spectral models
+
+The package includes tools for library matching, candidate merging and ranking, forward MS2 spectrum prediction, joint-fingerprint prediction and similarity scoring, and semantic spectrum search. Prediction features use the model assets shipped under `inst/extdata/models/`; some workflows require an available Python environment and optional dependencies.
+
+## Semi-quantification and risk assessment
+
+NTSminer includes internal-standard matching and response normalization, relative ionization efficiency (RIE) prediction, concentration estimation, EPI Suite and ADMET risk workflows, and ToxPi scoring and visualization.
+
+### logIE and RIE example
 
 ```r
-# 启动附带 Shiny 界面
+model <- load_logIE_model(
+  bundled_nts_file("extdata/models/logIE/logIE_model_inhouse_pos.rds")
+)
+pred <- predict_logIE(smiles_vec, model = model, polarity = "positive")
+rie <- predict_rie(feature_table, logIE_model = model, polarity = "positive")
+```
+
+### ADMET and ToxPi example
+
+These functions require the relevant backend services or optional packages. For example:
+
+```r
+smiles_tbl <- utils::read.csv(
+  "path/to/compound_smiles.csv",
+  stringsAsFactors = FALSE
+)
+smiles_canon <- canonicalize_smiles(smiles_tbl$SMILES)
+epi <- predict_episuite(smiles_canon)
+admet <- predict_admet_risk(smiles_canon, backend = "admet_ai")
+tox_input <- prepare_toxpi(
+  epi,
+  admet,
+  query_smiles = smiles_canon,
+  compound_ids = smiles_tbl$name
+)
+tox_scores <- run_toxpi(tox_input, weight_multiplier = 1)
+plot_toxpi(tox_scores)
+```
+
+## Shiny interface and package checks
+
+```r
 NTSminer::launch_ntsminer()
 
-# 包检查（需开发工具链）
 devtools::check()
 devtools::test()
 ```
 
-Vignette 入口：[vignettes/ntsminer-workflow.Rmd](vignettes/ntsminer-workflow.Rmd)。
-
-## 环境归趋 / ADMET / ToxPi
-
-| 步骤 | 函数 | 说明 |
-|------|------|------|
-| 1 | **`canonicalize_smiles()`** | 预测前统一 SMILES，避免 EPI 改写导致合并错位 |
-| 2 | **`predict_episuite()`** / **`predict_admet_risk()`** | EPI Suite REST + ADMET-AI（或 ADMETlab 3.0） |
-| 3 | **`prepare_toxpi()`** | 六切片得分（0–1）；传 **`compound_ids`**（如筛查表 `name` / `Lab_ID`），勿只靠 `episuite_Name` |
-| 4 | **`run_toxpi()`** / **`plot_toxpi()`** | 需 **`toxpiR`**（`Suggests`） |
-
-## logIE 预测与半定量 RIE
-
-| 步骤 | 函数 | 说明 |
-|------|------|------|
-| 1 | **`predict_logIE()`** | 纯 rcdk 指纹+描述符 XGBoost 预测 logIE（POS R²=0.565 / NEG R²=0.644） |
-| 2 | **`predict_rie()`** | SMILES → logIE 模型 → `rie = 10^pred_logIE`，自动加载模型/检测 SMILES 列 |
-| 3 | **`run_semi_quantification()`** | 内标 → 归一化 → RIE → 浓度，透传 `logIE_model`/`polarity`/`smiles_col` |
-| - | **`build_logIE_model()`** | 训练自定义 logIE 模型（XGBoost/RF），保存/加载 S3 `nts_logIE_model` |
-| - | **`predict_organic_percentage()`** | RT → 有机相比例插值（`R/04_feature_filter.R`），支持 linear/constant/spline |
-
-```r
-model <- load_logIE_model(bundled_nts_file("extdata/models/logIE/logIE_model_inhouse_pos.rds"))
-pred  <- predict_logIE(smiles_vec, model = model, polarity = "positive")
-rie   <- predict_rie(feature_table, logIE_model = model, polarity = "positive")
-```
-
-```r
-cf <- classify_classyfire(smiles_tbl$SMILES, compound_ids = smiles_tbl$name)
-```
-
-```r
-devtools::load_all(".")
-install.packages("toxpiR")  # 作图与打分
-
-smiles_tbl <- utils::read.csv("path/to/compound_smiles.csv", stringsAsFactors = FALSE)
-smiles_canon <- canonicalize_smiles(smiles_tbl$SMILES)
-epi   <- predict_episuite(smiles_canon)
-admet <- predict_admet_risk(smiles_canon, backend = "admet_ai")
-prep  <- prepare_toxpi(epi, admet, query_smiles = smiles_canon, compound_ids = smiles_tbl$name)
-res   <- run_toxpi(prep, weight_multiplier = 1)
-plot_toxpi(sort(res)[seq_len(min(20L, length(res)))])
-```
-
+`devtools::check()` and `devtools::test()` require the package development dependencies. Optional services and tools such as Python-based models, EPI Suite, ADMET backends, and ToxPi have their own installation requirements.
